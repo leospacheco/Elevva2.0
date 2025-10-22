@@ -22,27 +22,43 @@ const checkError = (error: PostgrestError | AuthError | null) => {
 // --- HELPER FUNCTIONS ---
 
 const getCurrentUserProfile = async (): Promise<User> => {
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    checkError(authError);
-    if (!authUser) throw new Error('User not authenticated.');
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+  checkError(authError);
+  if (!authUser) throw new Error('User not authenticated.');
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-    
-    checkError(error);
-    if (!data) throw new Error('User profile not found.');
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .single();
 
-    return data as User;
+  checkError(error);
+  if (!data) throw new Error('User profile not found.');
+
+  return data as User;
 };
 
 // --- API SERVICE OBJECT ---
 
 export const apiService = {
   // --- AUTH ---
+  subscribeToTickets(callback: () => void) {
+    // Cria um canal de Realtime dedicado para a tabela 'tickets'
+    const channel = supabase
+      .channel('tickets_channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tickets' },
+        // Quando um novo registro é inserido, executa a função de callback
+        () => {
+          callback();
+        }
+      )
+      .subscribe();
 
+    // Retorna a função de unsubscribe para limpeza no React
+    return () => channel.unsubscribe();
+  },
   async login(credentials: Credentials): Promise<void> {
     const { error } = await supabase.auth.signInWithPassword(credentials);
     checkError(error);
@@ -65,7 +81,7 @@ export const apiService = {
       });
       checkError(profileError);
     } else {
-        throw new Error("Registration succeeded but no user data was returned.");
+      throw new Error("Registration succeeded but no user data was returned.");
     }
   },
 
@@ -83,10 +99,10 @@ export const apiService = {
 
   async getProfile(authedUser: SupabaseUser): Promise<User> {
     const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authedUser.id)
-        .single();
+      .from('profiles')
+      .select('*')
+      .eq('id', authedUser.id)
+      .single();
     checkError(error);
     if (!data) throw new Error("User profile not found.");
     return data as User;
@@ -128,83 +144,83 @@ export const apiService = {
   },
 
   async getTicketById(id: number): Promise<Ticket> {
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('*, client:profiles(name)')
-        .eq('id', id)
-        .single();
+    const { data: ticketData, error: ticketError } = await supabase
+      .from('tickets')
+      .select('*, client:profiles(name)')
+      .eq('id', id)
+      .single();
     checkError(ticketError);
     if (!ticketData) throw new Error("Ticket not found");
 
     const { data: messagesData, error: messagesError } = await supabase
-        .from('ticket_messages')
-        .select('*, author:profiles(name)')
-        .eq('ticket_id', id)
-        .order('timestamp', { ascending: true });
+      .from('ticket_messages')
+      .select('*, author:profiles(name)')
+      .eq('ticket_id', id)
+      .order('timestamp', { ascending: true });
     checkError(messagesError);
-    
+
     return {
-        id: ticketData.id,
-        subject: ticketData.subject,
-        status: ticketData.status,
-        createdAt: new Date(ticketData.created_at),
-        updatedAt: new Date(ticketData.updated_at),
-        clientId: ticketData.client_id,
-        clientName: (ticketData as any).client?.name ?? 'Cliente Desconhecido',
-        messages: messagesData?.map((m: any) => ({
-            id: m.id,
-            content: m.content,
-            timestamp: new Date(m.timestamp),
-            authorName: m.author?.name ?? 'Usuário Desconhecido',
-            authorId: m.author_id,
-        })) ?? []
+      id: ticketData.id,
+      subject: ticketData.subject,
+      status: ticketData.status,
+      createdAt: new Date(ticketData.created_at),
+      updatedAt: new Date(ticketData.updated_at),
+      clientId: ticketData.client_id,
+      clientName: (ticketData as any).client?.name ?? 'Cliente Desconhecido',
+      messages: messagesData?.map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        timestamp: new Date(m.timestamp),
+        authorName: m.author?.name ?? 'Usuário Desconhecido',
+        authorId: m.author_id,
+      })) ?? []
     };
   },
 
   async getServices(): Promise<Service[]> {
     const currentUser = await getCurrentUserProfile();
     let query = supabase.from('services')
-        .select('*, client:profiles(name)')
-        .order('start_date', { ascending: false });
+      .select('*, client:profiles(name)')
+      .order('start_date', { ascending: false });
 
     if (currentUser.role === UserRole.Client) {
-        query = query.eq('client_id', currentUser.id);
+      query = query.eq('client_id', currentUser.id);
     }
 
     const { data, error } = await query;
     checkError(error);
-    return data?.map((s: any) => ({ 
-        id: s.id,
-        name: s.name,
-        status: s.status,
-        observation: s.observation,
-        clientId: s.client_id,
-        clientName: s.client?.name ?? 'Cliente Desconhecido',
-        startDate: new Date(s.start_date)
+    return data?.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      status: s.status,
+      observation: s.observation,
+      clientId: s.client_id,
+      clientName: s.client?.name ?? 'Cliente Desconhecido',
+      startDate: new Date(s.start_date)
     })) ?? [];
   },
 
   async getQuotes(): Promise<Quote[]> {
-     const currentUser = await getCurrentUserProfile();
+    const currentUser = await getCurrentUserProfile();
     let query = supabase.from('quotes')
-        .select('*, client:profiles(name)')
-        .order('created_at', { ascending: false });
+      .select('*, client:profiles(name)')
+      .order('created_at', { ascending: false });
 
     if (currentUser.role === UserRole.Client) {
-        query = query.eq('client_id', currentUser.id);
+      query = query.eq('client_id', currentUser.id);
     }
 
     const { data, error } = await query;
     checkError(error);
-    return data?.map((q: any) => ({ 
-        id: q.id,
-        description: q.description,
-        status: q.status,
-        value: q.value,
-        observation: q.observation,
-        clientId: q.client_id,
-        clientName: q.client?.name ?? 'Cliente Desconhecido',
-        createdAt: new Date(q.created_at)
+    return data?.map((q: any) => ({
+      id: q.id,
+      description: q.description,
+      status: q.status,
+      value: q.value,
+      observation: q.observation,
+      clientId: q.client_id,
+      clientName: q.client?.name ?? 'Cliente Desconhecido',
+      createdAt: new Date(q.created_at)
     })) ?? [];
   },
 
@@ -220,31 +236,31 @@ export const apiService = {
     checkError(error);
     return data as User[] ?? [];
   },
-  
+
   // --- DATA MUTATION ---
 
   async createTicket(ticketData: { subject: string; message: string; clientId: string; }): Promise<void> {
     const currentUser = await getCurrentUserProfile();
 
     const { data: newTicket, error: ticketError } = await supabase
-        .from('tickets')
-        .insert({
-            client_id: ticketData.clientId,
-            subject: ticketData.subject,
-            status: TicketStatus.Open,
-        })
-        .select()
-        .single();
+      .from('tickets')
+      .insert({
+        client_id: ticketData.clientId,
+        subject: ticketData.subject,
+        status: TicketStatus.Open,
+      })
+      .select()
+      .single();
     checkError(ticketError);
     if (!newTicket) throw new Error("Failed to create ticket");
 
     const { error: messageError } = await supabase
-        .from('ticket_messages')
-        .insert({
-            ticket_id: newTicket.id,
-            author_id: currentUser.id,
-            content: ticketData.message
-        });
+      .from('ticket_messages')
+      .insert({
+        ticket_id: newTicket.id,
+        author_id: currentUser.id,
+        content: ticketData.message
+      });
     checkError(messageError);
   },
 
@@ -252,19 +268,19 @@ export const apiService = {
     const currentUser = await getCurrentUserProfile();
 
     const { error: messageError } = await supabase
-        .from('ticket_messages')
-        .insert({
-            ticket_id: ticketId,
-            author_id: currentUser.id,
-            content: content
-        });
+      .from('ticket_messages')
+      .insert({
+        ticket_id: ticketId,
+        author_id: currentUser.id,
+        content: content
+      });
     checkError(messageError);
 
     // Also update the ticket's updated_at timestamp
     const { error: updateError } = await supabase
-        .from('tickets')
-        .update({ updated_at: new Date().toISOString(), status: TicketStatus.InProgress })
-        .eq('id', ticketId);
+      .from('tickets')
+      .update({ updated_at: new Date().toISOString(), status: TicketStatus.InProgress })
+      .eq('id', ticketId);
     checkError(updateError);
   },
 
@@ -277,41 +293,41 @@ export const apiService = {
   },
 
   async createService(serviceData: Omit<Service, 'id' | 'clientName'>): Promise<void> {
-      const { clientId, startDate, ...rest } = serviceData;
-      const { error } = await supabase.from('services').insert({
-        client_id: clientId,
-        start_date: startDate,
-        ...rest
-      });
-      checkError(error);
+    const { clientId, startDate, ...rest } = serviceData;
+    const { error } = await supabase.from('services').insert({
+      client_id: clientId,
+      start_date: startDate,
+      ...rest
+    });
+    checkError(error);
   },
 
   async updateService(id: number, serviceData: Partial<Omit<Service, 'id' | 'clientName'>>): Promise<void> {
-      const { clientId, startDate, ...rest } = serviceData;
-      const payload: { [key: string]: any } = { ...rest };
-      if (clientId) payload.client_id = clientId;
-      if (startDate) payload.start_date = startDate;
-      
-      const { error } = await supabase.from('services').update(payload).eq('id', id);
-      checkError(error);
+    const { clientId, startDate, ...rest } = serviceData;
+    const payload: { [key: string]: any } = { ...rest };
+    if (clientId) payload.client_id = clientId;
+    if (startDate) payload.start_date = startDate;
+
+    const { error } = await supabase.from('services').update(payload).eq('id', id);
+    checkError(error);
   },
 
   async createQuote(quoteData: Omit<Quote, 'id' | 'clientName' | 'createdAt'>): Promise<void> {
-      const { clientId, ...rest } = quoteData;
-      const { error } = await supabase.from('quotes').insert({
-          client_id: clientId,
-          ...rest
-      });
-      checkError(error);
+    const { clientId, ...rest } = quoteData;
+    const { error } = await supabase.from('quotes').insert({
+      client_id: clientId,
+      ...rest
+    });
+    checkError(error);
   },
 
   async updateQuote(id: number, quoteData: Partial<Omit<Quote, 'id' | 'clientName' | 'createdAt'>>): Promise<void> {
-      const { clientId, ...rest } = quoteData;
-      const payload: { [key: string]: any } = { ...rest };
-      if (clientId) payload.client_id = clientId;
-      
-      const { error } = await supabase.from('quotes').update(payload).eq('id', id);
-      checkError(error);
+    const { clientId, ...rest } = quoteData;
+    const payload: { [key: string]: any } = { ...rest };
+    if (clientId) payload.client_id = clientId;
+
+    const { error } = await supabase.from('quotes').update(payload).eq('id', id);
+    checkError(error);
   }
 
 };

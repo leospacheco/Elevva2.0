@@ -40,7 +40,7 @@ const statusColors: { [key in TicketStatus | ServiceStatus | QuoteStatus]: strin
 
 const Sidebar: React.FC<{ user: User | null; activeItem: NavItem; setActiveItem: (item: NavItem) => void; handleLogout: () => void }> =
   ({ user, activeItem, setActiveItem, handleLogout }) => {
-    const baseNavItems: { name: NavItem, icon: React.FC<{className?: string}> }[] = [
+    const baseNavItems: { name: NavItem, icon: React.FC<{ className?: string }> }[] = [
       { name: 'Início', icon: UserIcon },
       { name: 'Tickets', icon: TicketIcon },
       { name: 'Serviços', icon: ServiceIcon },
@@ -62,9 +62,8 @@ const Sidebar: React.FC<{ user: User | null; activeItem: NavItem; setActiveItem:
               <li key={name}>
                 <button
                   onClick={() => setActiveItem(name)}
-                  className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 ${
-                    activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
-                  }`}
+                  className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
+                    }`}
                 >
                   <Icon className="w-6 h-6 mr-3" />
                   <span>{name}</span>
@@ -116,7 +115,16 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-        refreshData();
+      refreshData();
+
+      // CORREÇÃO DE REALTIME: Inicia a subscrição em tempo real para novos tickets
+      // Requer que o método subscribeToTickets seja adicionado ao apiService
+      const unsubscribeTickets = apiService.subscribeToTickets(refreshData);
+
+      // Retorna a função de cleanup
+      return () => {
+        unsubscribeTickets();
+      };
     }
   }, [user]);
 
@@ -155,30 +163,30 @@ const Dashboard: React.FC = () => {
 // --- VIEWS ---
 
 const HomeView: React.FC<{ user: User | null; tickets: Ticket[]; services: Service[]; quotes: Quote[] }> = ({ user, tickets, services, quotes }) => {
-    const title = user?.role === UserRole.Employee ? "Visão Geral da Agência" : "Resumo da Sua Conta";
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Bem-vindo(a), {user?.name}!</h1>
-            <p className="text-gray-600 mb-8">{title}</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Tickets de Suporte</h2>
-                    <p className="text-4xl font-bold text-blue-500">{tickets.length}</p>
-                    <p className="text-gray-500 mt-1">{tickets.filter(t => t.status === TicketStatus.Open).length} abertos</p>
-                </div>
-                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Serviços</h2>
-                    <p className="text-4xl font-bold text-green-500">{services.length}</p>
-                    <p className="text-gray-500 mt-1">{services.filter(s => s.status !== ServiceStatus.Completed).length} em andamento</p>
-                </div>
-                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-2 text-gray-700">Orçamentos</h2>
-                    <p className="text-4xl font-bold text-yellow-500">{quotes.length}</p>
-                    <p className="text-gray-500 mt-1">{quotes.filter(q => q.status === QuoteStatus.Requested || q.status === QuoteStatus.Sent).length} pendentes</p>
-                </div>
-            </div>
+  const title = user?.role === UserRole.Employee ? "Visão Geral da Agência" : "Resumo da Sua Conta";
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-2">Bem-vindo(a), {user?.name}!</h1>
+      <p className="text-gray-600 mb-8">{title}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2 text-gray-700">Tickets de Suporte</h2>
+          <p className="text-4xl font-bold text-blue-500">{tickets.length}</p>
+          <p className="text-gray-500 mt-1">{tickets.filter(t => t.status === TicketStatus.Open).length} abertos</p>
         </div>
-    );
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2 text-gray-700">Serviços</h2>
+          <p className="text-4xl font-bold text-green-500">{services.length}</p>
+          <p className="text-gray-500 mt-1">{services.filter(s => s.status !== ServiceStatus.Completed).length} em andamento</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2 text-gray-700">Orçamentos</h2>
+          <p className="text-4xl font-bold text-yellow-500">{quotes.length}</p>
+          <p className="text-gray-500 mt-1">{quotes.filter(q => q.status === QuoteStatus.Requested || q.status === QuoteStatus.Sent).length} pendentes</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: User[]; refreshData: () => void; }> = ({ user, tickets, clients, refreshData }) => {
@@ -186,7 +194,7 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | TicketStatus>('All');
-  
+
   const handleFinish = () => {
     setIsCreating(false);
     setSelectedTicketId(null);
@@ -201,8 +209,8 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
     .filter(ticket => {
       const lowerSearchTerm = searchTerm.toLowerCase();
       if (!lowerSearchTerm) return true;
-      const clientNameMatch = user?.role === UserRole.Employee 
-        ? ticket.clientName.toLowerCase().includes(lowerSearchTerm) 
+      const clientNameMatch = user?.role === UserRole.Employee
+        ? ticket.clientName.toLowerCase().includes(lowerSearchTerm)
         : false;
       return ticket.subject.toLowerCase().includes(lowerSearchTerm) || clientNameMatch;
     });
@@ -225,35 +233,35 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
         </button>
       </div>
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-          <div className="relative flex-grow">
-              <input
-                  type="text"
-                  placeholder={user?.role === UserRole.Employee ? "Buscar por assunto ou cliente..." : "Buscar por assunto..."}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          </div>
-          <div className="flex-shrink-0">
-              <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as 'All' | TicketStatus)}
-                  className="w-full md:w-auto px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                  <option value="All">Todos os Status</option>
-                  {Object.values(TicketStatus).map(status => (
-                      <option key={status} value={status}>{status}</option>
-                  ))}
-              </select>
-          </div>
+        <div className="relative flex-grow">
+          <input
+            type="text"
+            placeholder={user?.role === UserRole.Employee ? "Buscar por assunto ou cliente..." : "Buscar por assunto..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        </div>
+        <div className="flex-shrink-0">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'All' | TicketStatus)}
+            className="w-full md:w-auto px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">Todos os Status</option>
+            {Object.values(TicketStatus).map(status => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assunto</th>
-               {user?.role === UserRole.Employee && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>}
+              {user?.role === UserRole.Employee && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
             </tr>
@@ -271,11 +279,11 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(ticket.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</td>
               </tr>
             ))}
-             {filteredTickets.length === 0 && (
-                <tr>
-                    <td colSpan={user?.role === UserRole.Employee ? 4 : 3} className="text-center py-10 text-gray-500">Nenhum ticket encontrado.</td>
-                </tr>
-             )}
+            {filteredTickets.length === 0 && (
+              <tr>
+                <td colSpan={user?.role === UserRole.Employee ? 4 : 3} className="text-center py-10 text-gray-500">Nenhum ticket encontrado.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -294,20 +302,20 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
 
   const fetchTicket = async () => {
     try {
-        setIsLoading(true);
-        const fetchedTicket = await apiService.getTicketById(ticketId);
-        setTicket(fetchedTicket);
-    } catch(e) {
-        console.error("Failed to fetch ticket", e);
+      setIsLoading(true);
+      const fetchedTicket = await apiService.getTicketById(ticketId);
+      setTicket(fetchedTicket);
+    } catch (e) {
+      console.error("Failed to fetch ticket", e);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTicket();
   }, [ticketId]);
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [ticket?.messages]);
@@ -318,13 +326,13 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
 
     setIsSending(true);
     try {
-        await apiService.addTicketMessage(ticket.id, newMessage);
-        setNewMessage('');
-        await fetchTicket(); // Refresh ticket data to show new message
+      await apiService.addTicketMessage(ticket.id, newMessage);
+      setNewMessage('');
+      await fetchTicket(); // Refresh ticket data to show new message
     } catch (error) {
-        console.error("Failed to send message:", error);
+      console.error("Failed to send message:", error);
     } finally {
-        setIsSending(false);
+      setIsSending(false);
     }
   };
 
@@ -348,119 +356,119 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
 
   return (
     <div>
-        <button onClick={onBack} className="text-blue-600 mb-4 font-semibold">&larr; Voltar para tickets</button>
-        <div className="bg-white rounded-lg shadow-md mb-6">
-            <div className="p-6 border-b">
-                <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
-                    <h1 className="text-2xl font-bold text-gray-800 flex-grow">{ticket.subject}</h1>
-                     {user?.role === UserRole.Employee ? (
-                        <div className="flex-shrink-0 w-full md:w-auto">
-                            <select
-                                value={ticket.status}
-                                onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
-                                className={`w-full text-sm font-semibold rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 p-2 ${statusColors[ticket.status].replace('bg-', 'border-').replace('-100', '-300')} ${statusColors[ticket.status].replace('text-', 'bg-').replace('-800', '-100')} ${statusColors[ticket.status]}`}
-                                aria-label="Alterar status do ticket"
-                            >
-                                {Object.values(TicketStatus).map(status => (
-                                    <option key={status} value={status}>{status}</option>
-                                ))}
-                            </select>
-                        </div>
-                    ) : (
-                         <span className={`px-3 py-1 self-start inline-flex text-sm leading-5 font-semibold rounded-full ${statusColors[ticket.status]}`}>{ticket.status}</span>
-                    )}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
-                    <span>Cliente: <span className="font-medium text-gray-700">{ticket.clientName}</span></span>
-                    <span>Criado em: {format(new Date(ticket.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
-                    <span>Última atualização: {format(new Date(ticket.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                </div>
-            </div>
-            <div className="p-6 space-y-4 h-96 overflow-y-auto bg-gray-50">
-                {ticket.messages.map(msg => (
-                    <div key={msg.id} className={`flex ${msg.authorId === user?.id ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-xl p-3 rounded-lg shadow ${msg.authorId === user?.id ? 'bg-blue-500 text-white' : 'bg-white text-gray-800'}`}>
-                            <p className="font-bold text-sm">{msg.authorName}</p>
-                            <p className="text-base whitespace-pre-wrap">{msg.content}</p>
-                            <p className="text-xs text-right mt-1 opacity-75">{format(new Date(msg.timestamp), "HH:mm")}</p>
-                        </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
-            </div>
-            {ticket.status !== TicketStatus.Closed && (
-                <form onSubmit={handleSendMessage} className="flex items-center border-t p-4">
-                    <input 
-                        type="text" 
-                        value={newMessage} 
-                        onChange={e => setNewMessage(e.target.value)} 
-                        placeholder="Digite sua mensagem..." 
-                        className="flex-grow border-gray-300 rounded-md shadow-sm mr-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <button type="submit" disabled={isSending} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
-                        <SendIcon className="w-6 h-6" />
-                    </button>
-                </form>
+      <button onClick={onBack} className="text-blue-600 mb-4 font-semibold">&larr; Voltar para tickets</button>
+      <div className="bg-white rounded-lg shadow-md mb-6">
+        <div className="p-6 border-b">
+          <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
+            <h1 className="text-2xl font-bold text-gray-800 flex-grow">{ticket.subject}</h1>
+            {user?.role === UserRole.Employee ? (
+              <div className="flex-shrink-0 w-full md:w-auto">
+                <select
+                  value={ticket.status}
+                  onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
+                  className={`w-full text-sm font-semibold rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 p-2 ${statusColors[ticket.status].replace('bg-', 'border-').replace('-100', '-300')} ${statusColors[ticket.status].replace('text-', 'bg-').replace('-800', '-100')} ${statusColors[ticket.status]}`}
+                  aria-label="Alterar status do ticket"
+                >
+                  {Object.values(TicketStatus).map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span className={`px-3 py-1 self-start inline-flex text-sm leading-5 font-semibold rounded-full ${statusColors[ticket.status]}`}>{ticket.status}</span>
             )}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
+            <span>Cliente: <span className="font-medium text-gray-700">{ticket.clientName}</span></span>
+            <span>Criado em: {format(new Date(ticket.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+            <span>Última atualização: {format(new Date(ticket.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+          </div>
         </div>
+        <div className="p-6 space-y-4 h-96 overflow-y-auto bg-gray-50">
+          {ticket.messages.map(msg => (
+            <div key={msg.id} className={`flex ${msg.authorId === user?.id ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-xl p-3 rounded-lg shadow ${msg.authorId === user?.id ? 'bg-blue-500 text-white' : 'bg-white text-gray-800'}`}>
+                <p className="font-bold text-sm">{msg.authorName}</p>
+                <p className="text-base whitespace-pre-wrap">{msg.content}</p>
+                <p className="text-xs text-right mt-1 opacity-75">{format(new Date(msg.timestamp), "HH:mm")}</p>
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+        {ticket.status !== TicketStatus.Closed && (
+          <form onSubmit={handleSendMessage} className="flex items-center border-t p-4">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder="Digite sua mensagem..."
+              className="flex-grow border-gray-300 rounded-md shadow-sm mr-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button type="submit" disabled={isSending} className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
+              <SendIcon className="w-6 h-6" />
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 };
 
 
-const CreateTicketForm: React.FC<{user: User | null; clients: User[]; onFinish: () => void}> = ({ user, clients, onFinish }) => {
-    const [subject, setSubject] = useState('');
-    const [message, setMessage] = useState('');
-    const [clientId, setClientId] = useState<string | undefined>(user?.role === UserRole.Client ? user?.id : undefined);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const CreateTicketForm: React.FC<{ user: User | null; clients: User[]; onFinish: () => void }> = ({ user, clients, onFinish }) => {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [clientId, setClientId] = useState<string | undefined>(user?.role === UserRole.Client ? user?.id : undefined);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (user?.role === UserRole.Employee && !clientId) {
-            alert("Por favor, selecione um cliente.");
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            await apiService.createTicket({ subject, message, clientId: clientId! });
-            onFinish();
-        } catch (error) {
-            console.error("Failed to create ticket:", error);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    return (
-        <div>
-            <button onClick={onFinish} className="text-blue-600 mb-4 font-semibold">&larr; Voltar</button>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h1 className="text-2xl font-bold text-gray-800 mb-6">Abrir Novo Ticket</h1>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {user?.role === UserRole.Employee && (
-                         <div>
-                            <label htmlFor="client" className="block text-sm font-medium text-gray-700">Cliente</label>
-                            <select id="client" value={clientId} onChange={e => setClientId(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Selecione um cliente</option>
-                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        </div>
-                    )}
-                    <div>
-                        <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Assunto</label>
-                        <input type="text" id="subject" value={subject} onChange={e => setSubject(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div>
-                        <label htmlFor="message" className="block text-sm font-medium text-gray-700">Descreva seu problema</label>
-                        <textarea id="message" value={message} onChange={e => setMessage(e.target.value)} required rows={5} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
-                    </div>
-                    <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
-                        {isSubmitting ? 'Enviando...' : 'Enviar Ticket'}
-                    </button>
-                </form>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (user?.role === UserRole.Employee && !clientId) {
+      alert("Por favor, selecione um cliente.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await apiService.createTicket({ subject, message, clientId: clientId! });
+      onFinish();
+    } catch (error) {
+      console.error("Failed to create ticket:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={onFinish} className="text-blue-600 mb-4 font-semibold">&larr; Voltar</button>
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Abrir Novo Ticket</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {user?.role === UserRole.Employee && (
+            <div>
+              <label htmlFor="client" className="block text-sm font-medium text-gray-700">Cliente</label>
+              <select id="client" value={clientId} onChange={e => setClientId(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Selecione um cliente</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
-        </div>
-    );
+          )}
+          <div>
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Assunto</label>
+            <input type="text" id="subject" value={subject} onChange={e => setSubject(e.target.value)} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+          <div>
+            <label htmlFor="message" className="block text-sm font-medium text-gray-700">Descreva seu problema</label>
+            <textarea id="message" value={message} onChange={e => setMessage(e.target.value)} required rows={5} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+          </div>
+          <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
+            {isSubmitting ? 'Enviando...' : 'Enviar Ticket'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 
@@ -476,16 +484,16 @@ const ServicesView: React.FC<{ user: User | null; services: Service[]; clients: 
 
   return (
     <div>
-       <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
-            {user?.role === UserRole.Employee && (
-                <button onClick={() => { setEditingService(null); setIsModalOpen(true); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors">
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    Criar Serviço
-                </button>
-            )}
-        </div>
-       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
+        {user?.role === UserRole.Employee && (
+          <button onClick={() => { setEditingService(null); setIsModalOpen(true); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors">
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Criar Serviço
+          </button>
+        )}
+      </div>
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -502,25 +510,25 @@ const ServicesView: React.FC<{ user: User | null; services: Service[]; clients: 
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
                 {user?.role === UserRole.Employee && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.clientName}</td>}
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[service.status]}`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[service.status]}`}>
                     {service.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(service.startDate), "dd/MM/yyyy", { locale: ptBR })}</td>
                 {user?.role === UserRole.Employee && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button onClick={() => { setEditingService(service); setIsModalOpen(true); }} className="text-blue-600 hover:text-blue-900">
-                            <EditIcon className="w-5 h-5" />
-                        </button>
-                    </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button onClick={() => { setEditingService(service); setIsModalOpen(true); }} className="text-blue-600 hover:text-blue-900">
+                      <EditIcon className="w-5 h-5" />
+                    </button>
+                  </td>
                 )}
               </tr>
             ))}
-             {services.length === 0 && (
-                <tr>
-                    <td colSpan={user?.role === UserRole.Employee ? 5 : 4} className="text-center py-10 text-gray-500">Nenhum serviço encontrado.</td>
-                </tr>
-             )}
+            {services.length === 0 && (
+              <tr>
+                <td colSpan={user?.role === UserRole.Employee ? 5 : 4} className="text-center py-10 text-gray-500">Nenhum serviço encontrado.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -542,16 +550,16 @@ const QuotesView: React.FC<{ user: User | null; quotes: Quote[]; clients: User[]
 
   return (
     <div>
-        <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Orçamentos</h1>
-            {user?.role === UserRole.Employee && (
-                <button onClick={() => { setEditingQuote(null); setIsModalOpen(true); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors">
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    Criar Orçamento
-                </button>
-            )}
-        </div>
-       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Orçamentos</h1>
+        {user?.role === UserRole.Employee && (
+          <button onClick={() => { setEditingQuote(null); setIsModalOpen(true); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-600 transition-colors">
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Criar Orçamento
+          </button>
+        )}
+      </div>
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -560,7 +568,7 @@ const QuotesView: React.FC<{ user: User | null; quotes: Quote[]; clients: User[]
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-               {user?.role === UserRole.Employee && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>}
+              {user?.role === UserRole.Employee && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -569,26 +577,26 @@ const QuotesView: React.FC<{ user: User | null; quotes: Quote[]; clients: User[]
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{quote.description}</td>
                 {user?.role === UserRole.Employee && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{quote.clientName}</td>}
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[quote.status]}`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[quote.status]}`}>
                     {quote.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(quote.value)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(quote.createdAt), "dd/MM/yyyy", { locale: ptBR })}</td>
                 {user?.role === UserRole.Employee && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button onClick={() => { setEditingQuote(quote); setIsModalOpen(true); }} className="text-blue-600 hover:text-blue-900">
-                            <EditIcon className="w-5 h-5" />
-                        </button>
-                    </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button onClick={() => { setEditingQuote(quote); setIsModalOpen(true); }} className="text-blue-600 hover:text-blue-900">
+                      <EditIcon className="w-5 h-5" />
+                    </button>
+                  </td>
                 )}
               </tr>
             ))}
-             {quotes.length === 0 && (
-                <tr>
-                    <td colSpan={user?.role === UserRole.Employee ? 6 : 5} className="text-center py-10 text-gray-500">Nenhum orçamento encontrado.</td>
-                </tr>
-             )}
+            {quotes.length === 0 && (
+              <tr>
+                <td colSpan={user?.role === UserRole.Employee ? 6 : 5} className="text-center py-10 text-gray-500">Nenhum orçamento encontrado.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -598,222 +606,222 @@ const QuotesView: React.FC<{ user: User | null; quotes: Quote[]; clients: User[]
 };
 
 
-const ClientsView: React.FC<{clients: User[]}> = ({ clients }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const filteredClients = clients.filter(c => 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        c.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+const ClientsView: React.FC<{ clients: User[] }> = ({ clients }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredClients = clients.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Clientes</h1>
-            <div className="relative mb-4">
-                <input
-                    type="text"
-                    placeholder="Buscar por nome ou email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-lg"
-                />
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            </div>
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-                <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {filteredClients.map(client => (
-                            <tr key={client.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.email}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.company || 'N/A'}</td>
-                            </tr>
-                        ))}
-                        {filteredClients.length === 0 && (
-                            <tr><td colSpan={3} className="text-center py-10 text-gray-500">Nenhum cliente encontrado.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Clientes</h1>
+      <div className="relative mb-4">
+        <input
+          type="text"
+          placeholder="Buscar por nome ou email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border rounded-lg"
+        />
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+      </div>
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredClients.map(client => (
+              <tr key={client.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.company || 'N/A'}</td>
+              </tr>
+            ))}
+            {filteredClients.length === 0 && (
+              <tr><td colSpan={3} className="text-center py-10 text-gray-500">Nenhum cliente encontrado.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 };
 
 
 // --- MODAL COMPONENTS ---
 
 const Modal: React.FC<{ children: React.ReactNode; title: string; onClose: () => void }> = ({ children, title, onClose }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div className="flex justify-between items-center p-4 border-b">
-                <h3 className="text-xl font-semibold">{title}</h3>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                    <CloseIcon className="w-6 h-6" />
-                </button>
-            </div>
-            <div className="p-6">
-                {children}
-            </div>
-        </div>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="text-xl font-semibold">{title}</h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <CloseIcon className="w-6 h-6" />
+        </button>
+      </div>
+      <div className="p-6">
+        {children}
+      </div>
     </div>
+  </div>
 );
 
 
-const ServiceFormModal: React.FC<{service: Service | null; clients: User[]; onClose: () => void}> = ({ service, clients, onClose }) => {
-    const [formData, setFormData] = useState({
-        clientId: service?.clientId || '',
-        name: service?.name || '',
-        status: service?.status || ServiceStatus.Pending,
-        startDate: service ? format(new Date(service.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        observation: service?.observation || '',
-    });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const ServiceFormModal: React.FC<{ service: Service | null; clients: User[]; onClose: () => void }> = ({ service, clients, onClose }) => {
+  const [formData, setFormData] = useState({
+    clientId: service?.clientId || '',
+    name: service?.name || '',
+    status: service?.status || ServiceStatus.Pending,
+    startDate: service ? format(new Date(service.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+    observation: service?.observation || '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            // FIX: The `Service` type expects `startDate` to be a `Date` object, but the form state stores it as a string.
-            // Create a new payload object converting the `startDate` string to a `Date` object to satisfy the type checking.
-            // Appending 'T00:00:00' ensures the date string is parsed in the local timezone, preventing off-by-one day errors.
-            const payload = {
-                ...formData,
-                startDate: new Date(`${formData.startDate}T00:00:00`),
-            };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // FIX: The `Service` type expects `startDate` to be a `Date` object, but the form state stores it as a string.
+      // Create a new payload object converting the `startDate` string to a `Date` object to satisfy the type checking.
+      // Appending 'T00:00:00' ensures the date string is parsed in the local timezone, preventing off-by-one day errors.
+      const payload = {
+        ...formData,
+        startDate: new Date(`${formData.startDate}T00:00:00`),
+      };
 
-            if (service) { // Editing
-                await apiService.updateService(service.id, payload);
-            } else { // Creating
-                await apiService.createService(payload);
-            }
-            onClose();
-        } catch(err) {
-            console.error("Failed to save service", err);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+      if (service) { // Editing
+        await apiService.updateService(service.id, payload);
+      } else { // Creating
+        await apiService.createService(payload);
+      }
+      onClose();
+    } catch (err) {
+      console.error("Failed to save service", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    return (
-        <Modal title={service ? "Editar Serviço" : "Criar Novo Serviço"} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">Cliente</label>
-                    <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        <option value="">Selecione um cliente</option>
-                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nome do Serviço</label>
-                    <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-                </div>
-                 <div>
-                    <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">Data de Início</label>
-                    <input type="date" id="startDate" name="startDate" value={formData.startDate} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-                </div>
-                 <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
-                    <select id="status" name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        {Object.values(ServiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label htmlFor="observation" className="block text-sm font-medium text-gray-700">Observação</label>
-                    <textarea id="observation" name="observation" value={formData.observation} onChange={handleChange} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
-                </div>
-                <div className="flex justify-end pt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300">
-                        {isSubmitting ? 'Salvando...' : 'Salvar'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
+  return (
+    <Modal title={service ? "Editar Serviço" : "Criar Novo Serviço"} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">Cliente</label>
+          <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Selecione um cliente</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nome do Serviço</label>
+          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">Data de Início</label>
+          <input type="date" id="startDate" name="startDate" value={formData.startDate} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+          <select id="status" name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            {Object.values(ServiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="observation" className="block text-sm font-medium text-gray-700">Observação</label>
+          <textarea id="observation" name="observation" value={formData.observation} onChange={handleChange} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Cancelar</button>
+          <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300">
+            {isSubmitting ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 };
 
-const QuoteFormModal: React.FC<{quote: Quote | null; clients: User[]; onClose: () => void}> = ({ quote, clients, onClose }) => {
-    const [formData, setFormData] = useState({
-        clientId: quote?.clientId || '',
-        description: quote?.description || '',
-        status: quote?.status || QuoteStatus.Requested,
-        value: quote?.value || 0,
-        observation: quote?.observation || '',
-    });
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const QuoteFormModal: React.FC<{ quote: Quote | null; clients: User[]; onClose: () => void }> = ({ quote, clients, onClose }) => {
+  const [formData, setFormData] = useState({
+    clientId: quote?.clientId || '',
+    description: quote?.description || '',
+    status: quote?.status || QuoteStatus.Requested,
+    value: quote?.value || 0,
+    observation: quote?.observation || '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
-    };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+  };
 
-     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            if (quote) { // Editing
-                await apiService.updateQuote(quote.id, formData);
-            } else { // Creating
-                await apiService.createQuote(formData);
-            }
-            onClose();
-        } catch(err) {
-            console.error("Failed to save quote", err);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (quote) { // Editing
+        await apiService.updateQuote(quote.id, formData);
+      } else { // Creating
+        await apiService.createQuote(formData);
+      }
+      onClose();
+    } catch (err) {
+      console.error("Failed to save quote", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
-    return (
-        <Modal title={quote ? "Editar Orçamento" : "Criar Novo Orçamento"} onClose={onClose}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">Cliente</label>
-                    <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        <option value="">Selecione um cliente</option>
-                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">Descrição</label>
-                    <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
-                </div>
-                 <div>
-                    <label htmlFor="value" className="block text-sm font-medium text-gray-700">Valor (R$)</label>
-                    <input type="number" id="value" name="value" value={formData.value} onChange={handleChange} required step="0.01" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-                </div>
-                <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
-                    <select id="status" name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        {Object.values(QuoteStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label htmlFor="observation" className="block text-sm font-medium text-gray-700">Observação</label>
-                    <textarea id="observation" name="observation" value={formData.observation} onChange={handleChange} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
-                </div>
-                <div className="flex justify-end pt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300">
-                        {isSubmitting ? 'Salvando...' : 'Salvar'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
+  return (
+    <Modal title={quote ? "Editar Orçamento" : "Criar Novo Orçamento"} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="clientId" className="block text-sm font-medium text-gray-700">Cliente</label>
+          <select id="clientId" name="clientId" value={formData.clientId} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Selecione um cliente</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Descrição</label>
+          <textarea id="description" name="description" value={formData.description} onChange={handleChange} required rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+        </div>
+        <div>
+          <label htmlFor="value" className="block text-sm font-medium text-gray-700">Valor (R$)</label>
+          <input type="number" id="value" name="value" value={formData.value} onChange={handleChange} required step="0.01" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+        </div>
+        <div>
+          <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+          <select id="status" name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            {Object.values(QuoteStatus).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="observation" className="block text-sm font-medium text-gray-700">Observação</label>
+          <textarea id="observation" name="observation" value={formData.observation} onChange={handleChange} rows={3} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg mr-2 hover:bg-gray-300">Cancelar</button>
+          <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300">
+            {isSubmitting ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 
 export default Dashboard;
