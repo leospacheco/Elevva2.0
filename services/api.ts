@@ -41,68 +41,7 @@ const getCurrentUserProfile = async (): Promise<User> => {
 // --- API SERVICE OBJECT ---
 
 export const apiService = {
-  // --- AUTH & REALTIME ---
-  subscribeToTickets(callback: (payload: any) => void) {
-    const channel = supabase
-      .channel('tickets_channel')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'tickets' },
-        (payload) => {
-          callback(payload);
-        }
-      )
-      .subscribe();
-  
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToTicketMessages(ticketId: number, callback: () => void) {
-    const channel = supabase
-      .channel(`ticket_messages_${ticketId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ticket_messages',
-          filter: `ticket_id=eq.${ticketId}`,
-        },
-        () => {
-          callback();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  },
-
-  subscribeToAllMessages(callback: (payload: any) => void) {
-    // RLS policies on `ticket_messages` will ensure users only receive
-    // updates for tickets they are allowed to see.
-    const channel = supabase
-      .channel('all_ticket_messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ticket_messages',
-        },
-        (payload) => {
-          callback(payload);
-        }
-      )
-      .subscribe();
-    
-    return () => {
-        supabase.removeChannel(channel);
-    };
-  },
+  // --- AUTH ---
   
   async login(credentials: Credentials): Promise<void> {
     const { error } = await supabase.auth.signInWithPassword(credentials);
@@ -151,6 +90,58 @@ export const apiService = {
     checkError(error);
     if (!data) throw new Error("User profile not found.");
     return data as User;
+  },
+
+  // --- NOTIFICATION SYSTEM (PULL-BASED) ---
+  // NOTA: Para esta funcionalidade, adicione uma nova coluna à sua tabela 'profiles' no Supabase:
+  // Nome da coluna: last_checked_tickets_at
+  // Tipo: timestamptz (Timestamp with Time Zone)
+  // Permitir Nulo (is nullable): Sim
+
+  async getUnreadUpdatesCount(): Promise<number> {
+    const user = await getCurrentUserProfile();
+
+    // Fetch only the last_checked_tickets_at field to be efficient
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('last_checked_tickets_at')
+      .eq('id', user.id)
+      .single();
+    
+    checkError(profileError);
+
+    const lastChecked = profileData?.last_checked_tickets_at;
+
+    // If the user has never checked, there are no "new" updates for them yet.
+    if (!lastChecked) {
+      return 0;
+    }
+    
+    // We consider a ticket "updated" if its `updated_at` is more recent than the last check.
+    // This covers both new tickets and new messages in existing tickets.
+    let query = supabase
+      .from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .gt('updated_at', lastChecked);
+
+    // Clients only see updates on their own tickets
+    if (user.role === UserRole.Client) {
+      query = query.eq('client_id', user.id);
+    }
+    
+    const { count, error } = await query;
+    checkError(error);
+    return count || 0;
+  },
+
+  async updateLastCheckedTimestamp(): Promise<void> {
+    const user = await getCurrentUserProfile();
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_checked_tickets_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+    checkError(error);
   },
 
   // --- DATA FETCHING ---

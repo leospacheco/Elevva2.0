@@ -3,6 +3,7 @@ import { User } from '../types';
 import { apiService } from '../services/api';
 import type { Credentials } from '../services/api';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient'; // FIX: Import supabase client for direct access
 
 interface AuthContextType {
   user: User | null;
@@ -57,6 +58,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   const logout = async () => {
+    // FIX: Explicitly remove all realtime channels *before* signing out.
+    // This is a more robust way to prevent stale connections which can cause
+    // CHANNEL_ERROR on subsequent logins.
+    console.log("Removing all realtime channels before logout...");
+    await supabase.removeAllChannels();
+    console.log("Channels removed. Signing out...");
     await apiService.logout();
     // The onAuthStateChange listener will set the user to null.
   };

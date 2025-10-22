@@ -8,7 +8,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key must be provided in env.js');
 }
 
-// A inicialização padrão do cliente é suficiente.
-// O problema de recarregamento no foco da janela foi corrigido no hook useAuth,
-// tornando desnecessária a opção `global: {}` que estava prejudicando as conexões em tempo real.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Otimiza a conexão em tempo real para maior estabilidade.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
