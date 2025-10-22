@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User } from '../types';
 import { apiService } from '../services/api';
 import type { Credentials } from '../services/api';
@@ -18,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Rely solely on onAuthStateChange. It fires immediately on load with the cached session.
@@ -25,10 +26,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // FIX: Corrected destructuring. apiService.onAuthStateChange returns the subscription object directly.
     const subscription = apiService.onAuthStateChange(
       async (authedUser: SupabaseUser | null) => {
+        // FIX: Only update profile if the user ID has changed. Prevents refetching on window focus.
         if (authedUser) {
-          const profile = await apiService.getProfile(authedUser);
-          setUser(profile);
+          if (authedUser.id !== userIdRef.current) {
+            const profile = await apiService.getProfile(authedUser);
+            userIdRef.current = profile.id;
+            setUser(profile);
+          }
         } else {
+          userIdRef.current = null;
           setUser(null);
         }
         setIsLoading(false);
@@ -38,7 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, []); // Keep dependency array empty to run only once
 
   const login = async (credentials: Credentials) => {
     // The onAuthStateChange listener will handle setting the user state.

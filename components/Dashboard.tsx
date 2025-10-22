@@ -1,4 +1,3 @@
-
 // FIX: Implemented full content for Dashboard.tsx to provide the client area UI.
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +20,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR'; // FIX: Corrected import path
 
 type NavItem = 'Início' | 'Tickets' | 'Serviços' | 'Orçamentos' | 'Clientes';
+type Notification = {
+    id: number;
+    message: string;
+    type: 'ticket' | 'message';
+};
 
 // ... (statusColors remain the same)
 const statusColors: { [key in TicketStatus | ServiceStatus | QuoteStatus]: string } = {
@@ -47,7 +51,9 @@ const Sidebar: React.FC<{
     handleLogout: () => void;
     isOpen: boolean;
     onClose: () => void;
-}> = ({ user, activeItem, setActiveItem, handleLogout, isOpen, onClose }) => {
+    hasNewTicketUpdate: boolean;
+    onTicketsViewed: () => void;
+}> = ({ user, activeItem, setActiveItem, handleLogout, isOpen, onClose, hasNewTicketUpdate, onTicketsViewed }) => {
     const baseNavItems: { name: NavItem, icon: React.FC<{ className?: string }> }[] = [
       { name: 'Início', icon: UserIcon },
       { name: 'Tickets', icon: TicketIcon },
@@ -60,6 +66,9 @@ const Sidebar: React.FC<{
     }
 
     const handleItemClick = (item: NavItem) => {
+        if (item === 'Tickets') {
+            onTicketsViewed();
+        }
         setActiveItem(item);
         onClose(); // Close sidebar on mobile after navigation
     };
@@ -89,17 +98,24 @@ const Sidebar: React.FC<{
                   <li key={name}>
                     <button
                       onClick={() => handleItemClick(name)}
-                      className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
+                      className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 relative ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
                         }`}
                     >
                       <Icon className="w-6 h-6 mr-3" />
                       <span>{name}</span>
+                       {name === 'Tickets' && hasNewTicketUpdate && (
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            </span>
+                        )}
                     </button>
                   </li>
                 ))}
               </ul>
             </nav>
             <div className="p-6 border-t border-gray-700">
+              {/* FIX: Changed onClick from `logout` to `handleLogout` to match the component's props. */}
               <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-700 rounded-md">
                 <LogoutIcon className="w-6 h-6 mr-3" />
                 <span>Sair</span>
@@ -109,7 +125,41 @@ const Sidebar: React.FC<{
       </>
     );
   };
+const NotificationToast: React.FC<{ notification: Notification; onDismiss: (id: number) => void }> = ({ notification, onDismiss }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onDismiss(notification.id);
+        }, 5000); // Auto-dismiss after 5 seconds
 
+        return () => clearTimeout(timer);
+    }, [notification.id, onDismiss]);
+
+    return (
+        <div className="bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
+            <div className="p-4">
+                <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                        {notification.type === 'ticket' ? (
+                            <TicketIcon className="h-6 w-6 text-blue-500" />
+                        ) : (
+                            <svg className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        )}
+                    </div>
+                    <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium text-gray-900">{notification.type === 'ticket' ? 'Novo Ticket!' : 'Nova Mensagem!'}</p>
+                        <p className="mt-1 text-sm text-gray-500">{notification.message}</p>
+                    </div>
+                    <div className="ml-4 flex-shrink-0 flex">
+                        <button onClick={() => onDismiss(notification.id)} className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <span className="sr-only">Close</span>
+                            <CloseIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeItem, setActiveItem] = useState<NavItem>('Início');
@@ -119,40 +169,93 @@ const Dashboard: React.FC = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [hasNewTicketUpdate, setHasNewTicketUpdate] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  const refreshData = async () => {
+  const playNotificationSound = () => {
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const context = audioContextRef.current;
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, context.currentTime); // A4 pitch
+    gainNode.gain.setValueAtTime(0.1, context.currentTime); // Volume
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + 0.5);
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.5);
+  };
+  const triggerNotification = (message: string, type: 'ticket' | 'message') => {
+    playNotificationSound();
+    setHasNewTicketUpdate(true);
+    setNotifications(prev => [...prev, { id: Date.now(), message, type }]);
+  };
+
+   const dismissNotification = (id: number) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
+  const refreshTickets = async () => {
     try {
-      setIsLoading(true);
-      const [ticketsData, servicesData, quotesData] = await Promise.all([
-        apiService.getTickets(),
-        apiService.getServices(),
-        apiService.getQuotes()
-      ]);
+      const ticketsData = await apiService.getTickets();
       setTickets(ticketsData);
-      setServices(servicesData);
-      setQuotes(quotesData);
-      if (user?.role === UserRole.Employee) {
-        const clientsData = await apiService.getClients();
-        setClients(clientsData);
-      }
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to refresh tickets:", error);
     }
   };
 
   useEffect(() => {
+    const fetchInitialData = async () => {
+        try {
+          setIsLoading(true);
+          const [ticketsData, servicesData, quotesData] = await Promise.all([
+            apiService.getTickets(),
+            apiService.getServices(),
+            apiService.getQuotes()
+          ]);
+          setTickets(ticketsData);
+          setServices(servicesData);
+          setQuotes(quotesData);
+          if (user?.role === UserRole.Employee) {
+            const clientsData = await apiService.getClients();
+            setClients(clientsData);
+          }
+        } catch (error) {
+          console.error("Failed to fetch dashboard data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+    };
+    
     if (user) {
-      refreshData();
+      fetchInitialData();
 
-      // CORREÇÃO DE REALTIME: Inicia a subscrição em tempo real para novos tickets
-      // Requer que o método subscribeToTickets seja adicionado ao apiService
-      const unsubscribeTickets = apiService.subscribeToTickets(refreshData);
+      // Subscription for new tickets
+      const unsubscribeTickets = apiService.subscribeToTickets((payload) => {
+        refreshTickets(); // Refresh ticket list in real-time
+        if (document.hidden || user.role === UserRole.Employee) {
+             const newTicket = payload.new as { subject: string };
+             triggerNotification(`Assunto: ${newTicket.subject}`, 'ticket');
+        }
+      });
 
-      // Retorna a função de cleanup
+      // Subscription for new messages
+      const unsubscribeMessages = apiService.subscribeToAllMessages((payload) => {
+        const newMessage = payload.new as { author_id: string; ticket_id: number };
+        // Notify if the message is from another user
+        if (newMessage.author_id !== user.id) {
+            refreshTickets(); // Update "last updated" time
+            triggerNotification(`Nova mensagem no ticket #${newMessage.ticket_id}`, 'message');
+        }
+      });
+      
       return () => {
         unsubscribeTickets();
+        unsubscribeMessages();
       };
     }
   }, [user]);
@@ -165,11 +268,11 @@ const Dashboard: React.FC = () => {
       case 'Início':
         return <HomeView user={user} tickets={tickets} services={services} quotes={quotes} />;
       case 'Tickets':
-        return <TicketsView user={user} tickets={tickets} clients={clients} refreshData={refreshData} />;
+        return <TicketsView user={user} tickets={tickets} clients={clients} refreshData={refreshTickets} />;
       case 'Serviços':
-        return <ServicesView user={user} services={services} clients={clients} refreshData={refreshData} />;
+        return <ServicesView user={user} services={services} clients={clients} refreshData={() => {}} />;
       case 'Orçamentos':
-        return <QuotesView user={user} quotes={quotes} clients={clients} refreshData={refreshData} />;
+        return <QuotesView user={user} quotes={quotes} clients={clients} refreshData={() => {}} />;
       case 'Clientes':
         return user?.role === UserRole.Employee ? <ClientsView clients={clients} /> : null;
       default:
@@ -179,6 +282,13 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
+       <div aria-live="assertive" className="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-50">
+            <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
+                {notifications.map(notification => (
+                    <NotificationToast key={notification.id} notification={notification} onDismiss={dismissNotification} />
+                ))}
+            </div>
+        </div>
       <Sidebar 
         user={user} 
         activeItem={activeItem} 
@@ -186,6 +296,8 @@ const Dashboard: React.FC = () => {
         handleLogout={logout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        hasNewTicketUpdate={hasNewTicketUpdate}
+        onTicketsViewed={() => setHasNewTicketUpdate(false)}
       />
       <main className="flex-1 flex flex-col overflow-y-auto">
         {/* Top bar for mobile */}
@@ -348,7 +460,8 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
 
   const fetchTicket = async () => {
     try {
-      setIsLoading(true);
+      // Don't set loading to true on refetch, to avoid flicker
+      // setIsLoading(true);
       const fetchedTicket = await apiService.getTicketById(ticketId);
       setTicket(fetchedTicket);
     } catch (e) {
@@ -359,7 +472,19 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
   };
 
   useEffect(() => {
-    fetchTicket();
+    setIsLoading(true);
+    fetchTicket(); // Initial fetch
+
+    // FIX: Subscribe to new messages for this ticket
+    const unsubscribe = apiService.subscribeToTicketMessages(ticketId, () => {
+        // When a new message arrives, refetch the ticket data to get the new message
+        fetchTicket();
+    });
+
+    // Cleanup subscription on component unmount
+    return () => {
+        unsubscribe();
+    };
   }, [ticketId]);
 
   useEffect(() => {
@@ -369,12 +494,15 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !ticket) return;
-
+  
     setIsSending(true);
     try {
       await apiService.addTicketMessage(ticket.id, newMessage);
       setNewMessage('');
-      await fetchTicket(); // Refresh ticket data to show new message
+      // CORREÇÃO: É necessário buscar os dados manualmente após o envio.
+      // A assinatura em tempo real notifica apenas *outros* clientes, não o cliente que enviou a mensagem.
+      // Isso garante que a mensagem do remetente apareça imediatamente.
+      await fetchTicket();
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {

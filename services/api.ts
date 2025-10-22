@@ -41,24 +41,69 @@ const getCurrentUserProfile = async (): Promise<User> => {
 // --- API SERVICE OBJECT ---
 
 export const apiService = {
-  // --- AUTH ---
-  subscribeToTickets(callback: () => void) {
-    // Cria um canal de Realtime dedicado para a tabela 'tickets'
+  // --- AUTH & REALTIME ---
+  subscribeToTickets(callback: (payload: any) => void) {
     const channel = supabase
       .channel('tickets_channel')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'tickets' },
-        // Quando um novo registro é inserido, executa a função de callback
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToTicketMessages(ticketId: number, callback: () => void) {
+    const channel = supabase
+      .channel(`ticket_messages_${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ticket_messages',
+          filter: `ticket_id=eq.${ticketId}`,
+        },
         () => {
           callback();
         }
       )
       .subscribe();
 
-    // Retorna a função de unsubscribe para limpeza no React
-    return () => channel.unsubscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
+
+  subscribeToAllMessages(callback: (payload: any) => void) {
+    // RLS policies on `ticket_messages` will ensure users only receive
+    // updates for tickets they are allowed to see.
+    const channel = supabase
+      .channel('all_ticket_messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ticket_messages',
+        },
+        (payload) => {
+          callback(payload);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+        supabase.removeChannel(channel);
+    };
+  },
+  
   async login(credentials: Credentials): Promise<void> {
     const { error } = await supabase.auth.signInWithPassword(credentials);
     checkError(error);

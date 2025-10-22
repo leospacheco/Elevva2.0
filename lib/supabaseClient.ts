@@ -8,7 +8,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key must be provided in env.js');
 }
 
-// CORREÇÃO: Adicionamos { global: {} } para desativar o listener de foco de janela do Supabase.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {}, 
-});
+// A inicialização padrão do cliente é suficiente.
+// O problema de recarregamento no foco da janela foi corrigido no hook useAuth,
+// tornando desnecessária a opção `global: {}` que estava prejudicando as conexões em tempo real.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
