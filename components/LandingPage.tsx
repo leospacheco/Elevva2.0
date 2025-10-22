@@ -64,7 +64,7 @@ const Footer: React.FC = () => (
             <p className="mb-6 text-gray-400">Transformando ideias em realidade digital.</p>
             <div className="mb-6">
                 <p><strong>Email:</strong> contato@elevvaweb.com</p>
-                <p><strong>Telefone:</strong> (11) 99999-9999</p>
+                <p><strong>Telefone:</strong> (41) 92000-1320</p>
             </div>
             <p className="text-gray-500 text-sm">&copy; {new Date().getFullYear()} Elevva Web. Todos os direitos reservados.</p>
         </div>
