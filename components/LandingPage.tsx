@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckIcon, LogoIcon, MenuIcon, CloseIcon } from './Icons';
@@ -8,18 +7,19 @@ const Header: React.FC = () => {
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-sm">
+      
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <LogoIcon className="w-10 h-10" />
+          {/* LOGO REDIMENSIONADA: w-14 h-14 */}
           <span className="text-2xl font-bold text-gray-800">
             <span className="text-green-500">Elevva</span>
             <span className="text-blue-500">Web</span>
           </span>
         </div>
         <nav className="hidden md:flex items-center space-x-8">
-          <a href="#services" className="text-gray-600 hover:text-blue-500 transition-colors">Serviços</a>
-          <a href="#plans" className="text-gray-600 hover:text-blue-500 transition-colors">Planos</a>
-          <a href="#contact" className="text-gray-600 hover:text-blue-500 transition-colors">Contato</a>
+          <a href="#services" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Serviços</a>
+          <a href="#plans" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Planos</a>
+          <a href="#contact" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Contato</a>
         </nav>
         <Link
           to="/login"
@@ -57,7 +57,8 @@ const Footer: React.FC = () => (
     <footer id="contact" className="bg-gray-800 text-white py-12">
         <div className="container mx-auto px-6 text-center">
             <div className="flex justify-center items-center space-x-3 mb-4">
-                <LogoIcon className="w-8 h-8"/>
+                {/* LOGO REDIMENSIONADA: w-10 h-10 */}
+                <LogoIcon className="w-16 h-16"/>
                 <h2 className="text-2xl font-bold">ElevvaWeb</h2>
             </div>
             <p className="mb-6 text-gray-400">Transformando ideias em realidade digital.</p>

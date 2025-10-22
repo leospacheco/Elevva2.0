@@ -15,6 +15,7 @@ import {
   EditIcon,
   SearchIcon,
   MenuIcon,
+  LogoIcon,
 } from './Icons';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR'; // FIX: Corrected import path
@@ -39,86 +40,87 @@ const statusColors: { [key in TicketStatus | ServiceStatus | QuoteStatus]: strin
   [QuoteStatus.Rejected]: 'bg-red-100 text-red-800',
 };
 
-const Sidebar: React.FC<{ 
-    user: User | null; 
-    activeItem: NavItem; 
-    setActiveItem: (item: NavItem) => void; 
-    handleLogout: () => void;
-    isOpen: boolean;
-    onClose: () => void;
-    unreadCount: number;
-    onClearNotifications: () => void;
+const Sidebar: React.FC<{
+  user: User | null;
+  activeItem: NavItem;
+  setActiveItem: (item: NavItem) => void;
+  handleLogout: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  unreadCount: number;
+  onClearNotifications: () => void;
 }> = ({ user, activeItem, setActiveItem, handleLogout, isOpen, onClose, unreadCount, onClearNotifications }) => {
-    const baseNavItems: { name: NavItem, icon: React.FC<{ className?: string }> }[] = [
-      { name: 'Início', icon: UserIcon },
-      { name: 'Tickets', icon: TicketIcon },
-      { name: 'Serviços', icon: ServiceIcon },
-      { name: 'Orçamentos', icon: QuoteIcon },
-    ];
+  const baseNavItems: { name: NavItem, icon: React.FC<{ className?: string }> }[] = [
+    { name: 'Início', icon: UserIcon },
+    { name: 'Tickets', icon: TicketIcon },
+    { name: 'Serviços', icon: ServiceIcon },
+    { name: 'Orçamentos', icon: QuoteIcon },
+  ];
 
-    if (user?.role === UserRole.Employee) {
-      baseNavItems.push({ name: 'Clientes', icon: UserIcon });
+  if (user?.role === UserRole.Employee) {
+    baseNavItems.push({ name: 'Clientes', icon: UserIcon });
+  }
+
+  const handleItemClick = (item: NavItem) => {
+    if (item === 'Tickets') {
+      onClearNotifications();
     }
-
-    const handleItemClick = (item: NavItem) => {
-        if (item === 'Tickets') {
-            onClearNotifications();
-        }
-        setActiveItem(item);
-        onClose(); // Close sidebar on mobile after navigation
-    };
-
-    return (
-      <>
-        {/* Backdrop for mobile */}
-        <div 
-            className={`fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={onClose}
-            aria-hidden="true"
-        ></div>
-        
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-white flex flex-col transform transition-transform duration-300 ease-in-out z-40 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="p-6 text-2xl font-bold border-b border-gray-700 flex justify-between items-center">
-                <div>
-                    <span className="text-green-400">Elevva</span><span className="text-blue-400">Web</span>
-                </div>
-                <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white" aria-label="Close menu">
-                    <CloseIcon className="w-6 h-6" />
-                </button>
-            </div>
-            <nav className="flex-grow">
-              <ul>
-                {baseNavItems.map(({ name, icon: Icon }) => (
-                  <li key={name}>
-                    <button
-                      onClick={() => handleItemClick(name)}
-                      className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 relative ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
-                        }`}
-                    >
-                      <Icon className="w-6 h-6 mr-3" />
-                      <span>{name}</span>
-                       {name === 'Tickets' && unreadCount > 0 && (
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                        )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-            <div className="p-6 border-t border-gray-700">
-              {/* FIX: Changed onClick from `logout` to `handleLogout` to match the component's props. */}
-              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-700 rounded-md">
-                <LogoutIcon className="w-6 h-6 mr-3" />
-                <span>Sair</span>
-              </button>
-            </div>
-        </aside>
-      </>
-    );
+    setActiveItem(item);
+    onClose(); // Close sidebar on mobile after navigation
   };
+
+  return (
+    <>
+      {/* Backdrop for mobile */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      ></div>
+
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-white flex flex-col transform transition-transform duration-300 ease-in-out z-40 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 text-2xl font-bold border-b border-gray-700 flex items-center space-x-2">
+          <LogoIcon className="w-8 h-8" />
+          <span>
+            <span className="text-green-400">Elevva</span><span className="text-blue-400">Web</span>
+          </span>
+          <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white ml-auto" aria-label="Close menu">
+            <CloseIcon className="w-6 h-6" />
+          </button>
+        </div>
+        <nav className="flex-grow">
+          <ul>
+            {baseNavItems.map(({ name, icon: Icon }) => (
+              <li key={name}>
+                <button
+                  onClick={() => handleItemClick(name)}
+                  className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 relative ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
+                    }`}
+                >
+                  <Icon className="w-6 h-6 mr-3" />
+                  <span>{name}</span>
+                  {name === 'Tickets' && unreadCount > 0 && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="p-6 border-t border-gray-700">
+          {/* FIX: Changed onClick from `logout` to `handleLogout` to match the component's props. */}
+          <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-700 rounded-md">
+            <LogoutIcon className="w-6 h-6 mr-3" />
+            <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+};
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeItem, setActiveItem] = useState<NavItem>('Início');
@@ -154,7 +156,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-};
+  };
 
   useEffect(() => {
     if (user) {
@@ -199,10 +201,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
-      <Sidebar 
-        user={user} 
-        activeItem={activeItem} 
-        setActiveItem={setActiveItem} 
+      <Sidebar
+        user={user}
+        activeItem={activeItem}
+        setActiveItem={setActiveItem}
         handleLogout={logout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -212,13 +214,13 @@ const Dashboard: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-y-auto">
         {/* Top bar for mobile */}
         <header className="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
-            <button onClick={() => setIsSidebarOpen(true)} aria-label="Open menu">
-                <MenuIcon className="w-6 h-6 text-gray-700" />
-            </button>
-            <div className="text-lg font-bold text-gray-800">
-                {activeItem}
-            </div>
-            <div className="w-6"></div> {/* Spacer */}
+          <button onClick={() => setIsSidebarOpen(true)} aria-label="Open menu">
+            <MenuIcon className="w-6 h-6 text-gray-700" />
+          </button>
+          <div className="text-lg font-bold text-gray-800">
+            {activeItem}
+          </div>
+          <div className="w-6"></div> {/* Spacer */}
         </header>
         <div className="p-4 md:p-8 flex-grow">
           {renderContent()}
@@ -264,7 +266,7 @@ const TicketsView: React.FC<{ user: User | null; initialTickets: Ticket[]; clien
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | TicketStatus>('All');
   const [tickets, setTickets] = useState(initialTickets);
-  
+
   // Keep the view's internal state synchronized with external updates.
   useEffect(() => {
     setTickets(initialTickets);
@@ -398,7 +400,7 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: U
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !ticket) return;
-  
+
     setIsSending(true);
     try {
       await apiService.addTicketMessage(ticket.id, newMessage);

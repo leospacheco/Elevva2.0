@@ -18,6 +18,7 @@ const AuthPage: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/dashboard';
   
+  // Lógica de navegação corrigida para evitar erros de re-renderização
   useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });
@@ -60,7 +61,8 @@ const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
       <Link to="/" className="flex items-center space-x-3 mb-8">
-        <LogoIcon className="w-12 h-12" />
+        {/* LOGO REDIMENSIONADA: w-16 h-16 */}
+        <LogoIcon className="w-16 h-16" />
         <span className="text-3xl font-bold text-gray-800">
           <span className="text-green-500">Elevva</span>
           <span className="text-blue-500">Web</span>
