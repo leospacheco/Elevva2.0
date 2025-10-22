@@ -116,11 +116,13 @@ export const apiService = {
     checkError(error);
 
     return data?.map((t: any) => ({
-      ...t,
-      createdAt: t.created_at,
-      updatedAt: t.updated_at,
+      id: t.id,
+      subject: t.subject,
+      status: t.status,
+      createdAt: new Date(t.created_at),
+      updatedAt: new Date(t.updated_at),
       clientId: t.client_id,
-      clientName: t.client.name,
+      clientName: t.client?.name ?? 'Cliente Desconhecido',
       messages: [] // Messages are fetched on detail view
     })) ?? [];
   },
@@ -142,14 +144,18 @@ export const apiService = {
     checkError(messagesError);
     
     return {
-        ...(ticketData as any),
-        createdAt: ticketData.created_at,
-        updatedAt: ticketData.updated_at,
+        id: ticketData.id,
+        subject: ticketData.subject,
+        status: ticketData.status,
+        createdAt: new Date(ticketData.created_at),
+        updatedAt: new Date(ticketData.updated_at),
         clientId: ticketData.client_id,
-        clientName: (ticketData as any).client.name,
+        clientName: (ticketData as any).client?.name ?? 'Cliente Desconhecido',
         messages: messagesData?.map((m: any) => ({
-            ...m,
-            authorName: m.author.name,
+            id: m.id,
+            content: m.content,
+            timestamp: new Date(m.timestamp),
+            authorName: m.author?.name ?? 'Usuário Desconhecido',
             authorId: m.author_id,
         })) ?? []
     };
@@ -168,10 +174,13 @@ export const apiService = {
     const { data, error } = await query;
     checkError(error);
     return data?.map((s: any) => ({ 
-        ...s, 
+        id: s.id,
+        name: s.name,
+        status: s.status,
+        observation: s.observation,
         clientId: s.client_id,
-        clientName: s.client.name,
-        startDate: s.start_date
+        clientName: s.client?.name ?? 'Cliente Desconhecido',
+        startDate: new Date(s.start_date)
     })) ?? [];
   },
 
@@ -188,10 +197,14 @@ export const apiService = {
     const { data, error } = await query;
     checkError(error);
     return data?.map((q: any) => ({ 
-        ...q,
+        id: q.id,
+        description: q.description,
+        status: q.status,
+        value: q.value,
+        observation: q.observation,
         clientId: q.client_id,
-        clientName: q.client.name,
-        createdAt: q.created_at
+        clientName: q.client?.name ?? 'Cliente Desconhecido',
+        createdAt: new Date(q.created_at)
     })) ?? [];
   },
 
