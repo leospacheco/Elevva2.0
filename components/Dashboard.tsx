@@ -1,3 +1,4 @@
+
 // FIX: Implemented full content for Dashboard.tsx to provide the client area UI.
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -14,6 +15,7 @@ import {
   CloseIcon,
   EditIcon,
   SearchIcon,
+  MenuIcon,
 } from './Icons';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR'; // FIX: Corrected import path
@@ -38,8 +40,14 @@ const statusColors: { [key in TicketStatus | ServiceStatus | QuoteStatus]: strin
   [QuoteStatus.Rejected]: 'bg-red-100 text-red-800',
 };
 
-const Sidebar: React.FC<{ user: User | null; activeItem: NavItem; setActiveItem: (item: NavItem) => void; handleLogout: () => void }> =
-  ({ user, activeItem, setActiveItem, handleLogout }) => {
+const Sidebar: React.FC<{ 
+    user: User | null; 
+    activeItem: NavItem; 
+    setActiveItem: (item: NavItem) => void; 
+    handleLogout: () => void;
+    isOpen: boolean;
+    onClose: () => void;
+}> = ({ user, activeItem, setActiveItem, handleLogout, isOpen, onClose }) => {
     const baseNavItems: { name: NavItem, icon: React.FC<{ className?: string }> }[] = [
       { name: 'Início', icon: UserIcon },
       { name: 'Tickets', icon: TicketIcon },
@@ -51,40 +59,61 @@ const Sidebar: React.FC<{ user: User | null; activeItem: NavItem; setActiveItem:
       baseNavItems.push({ name: 'Clientes', icon: UserIcon });
     }
 
+    const handleItemClick = (item: NavItem) => {
+        setActiveItem(item);
+        onClose(); // Close sidebar on mobile after navigation
+    };
+
     return (
-      <aside className="w-64 bg-gray-800 text-white flex-col flex-shrink-0 hidden md:flex">
-        <div className="p-6 text-2xl font-bold border-b border-gray-700">
-          <span className="text-green-400">Elevva</span><span className="text-blue-400">Web</span>
-        </div>
-        <nav className="flex-grow">
-          <ul>
-            {baseNavItems.map(({ name, icon: Icon }) => (
-              <li key={name}>
-                <button
-                  onClick={() => setActiveItem(name)}
-                  className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
-                    }`}
-                >
-                  <Icon className="w-6 h-6 mr-3" />
-                  <span>{name}</span>
+      <>
+        {/* Backdrop for mobile */}
+        <div 
+            className={`fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={onClose}
+            aria-hidden="true"
+        ></div>
+        
+        {/* Sidebar */}
+        <aside className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-white flex flex-col transform transition-transform duration-300 ease-in-out z-40 md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="p-6 text-2xl font-bold border-b border-gray-700 flex justify-between items-center">
+                <div>
+                    <span className="text-green-400">Elevva</span><span className="text-blue-400">Web</span>
+                </div>
+                <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white" aria-label="Close menu">
+                    <CloseIcon className="w-6 h-6" />
                 </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="p-6 border-t border-gray-700">
-          <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-700 rounded-md">
-            <LogoutIcon className="w-6 h-6 mr-3" />
-            <span>Sair</span>
-          </button>
-        </div>
-      </aside>
+            </div>
+            <nav className="flex-grow">
+              <ul>
+                {baseNavItems.map(({ name, icon: Icon }) => (
+                  <li key={name}>
+                    <button
+                      onClick={() => handleItemClick(name)}
+                      className={`flex items-center w-full px-6 py-4 text-left transition-colors duration-200 ${activeItem === name ? 'bg-gray-700 text-white' : 'hover:bg-gray-700'
+                        }`}
+                    >
+                      <Icon className="w-6 h-6 mr-3" />
+                      <span>{name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="p-6 border-t border-gray-700">
+              <button onClick={handleLogout} className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-700 rounded-md">
+                <LogoutIcon className="w-6 h-6 mr-3" />
+                <span>Sair</span>
+              </button>
+            </div>
+        </aside>
+      </>
     );
   };
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeItem, setActiveItem] = useState<NavItem>('Início');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -150,9 +179,26 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
-      <Sidebar user={user} activeItem={activeItem} setActiveItem={setActiveItem} handleLogout={logout} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-8">
+      <Sidebar 
+        user={user} 
+        activeItem={activeItem} 
+        setActiveItem={setActiveItem} 
+        handleLogout={logout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        {/* Top bar for mobile */}
+        <header className="md:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+            <button onClick={() => setIsSidebarOpen(true)} aria-label="Open menu">
+                <MenuIcon className="w-6 h-6 text-gray-700" />
+            </button>
+            <div className="text-lg font-bold text-gray-800">
+                {activeItem}
+            </div>
+            <div className="w-6"></div> {/* Spacer */}
+        </header>
+        <div className="p-4 md:p-8 flex-grow">
           {renderContent()}
         </div>
       </main>

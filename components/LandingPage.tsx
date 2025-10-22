@@ -1,32 +1,57 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckIcon, LogoIcon } from './Icons';
+import { CheckIcon, LogoIcon, MenuIcon, CloseIcon } from './Icons';
 
-const Header: React.FC = () => (
-  <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-sm">
-    <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-      <div className="flex items-center space-x-3">
-        <LogoIcon className="w-10 h-10" />
-        <span className="text-2xl font-bold text-gray-800">
-          <span className="text-green-500">Elevva</span>
-          <span className="text-blue-500">Web</span>
-        </span>
+const Header: React.FC = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  return (
+    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-sm">
+      <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <LogoIcon className="w-10 h-10" />
+          <span className="text-2xl font-bold text-gray-800">
+            <span className="text-green-500">Elevva</span>
+            <span className="text-blue-500">Web</span>
+          </span>
+        </div>
+        <nav className="hidden md:flex items-center space-x-8">
+          <a href="#services" className="text-gray-600 hover:text-blue-500 transition-colors">Serviços</a>
+          <a href="#plans" className="text-gray-600 hover:text-blue-500 transition-colors">Planos</a>
+          <a href="#contact" className="text-gray-600 hover:text-blue-500 transition-colors">Contato</a>
+        </nav>
+        <Link
+          to="/login"
+          className="hidden md:inline-block bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md hover:shadow-lg"
+        >
+          Área do Cliente
+        </Link>
+        {/* Hamburger Button */}
+        <div className="md:hidden">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
+                {isMenuOpen ? <CloseIcon className="w-6 h-6 text-gray-700" /> : <MenuIcon className="w-6 h-6 text-gray-700" />}
+            </button>
+        </div>
       </div>
-      <nav className="hidden md:flex items-center space-x-8">
-        <a href="#services" className="text-gray-600 hover:text-blue-500 transition-colors">Serviços</a>
-        <a href="#plans" className="text-gray-600 hover:text-blue-500 transition-colors">Planos</a>
-        <a href="#contact" className="text-gray-600 hover:text-blue-500 transition-colors">Contato</a>
-      </nav>
-      <Link
-        to="/login"
-        className="hidden md:inline-block bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md hover:shadow-lg"
-      >
-        Área do Cliente
-      </Link>
-    </div>
-  </header>
-);
+       {/* Mobile Menu */}
+       <div className={`transition-all duration-300 ease-in-out md:hidden ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+           <nav className="flex flex-col items-center space-y-4 py-4 border-t border-gray-200 bg-white/95 backdrop-blur-md">
+                <a href="#services" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Serviços</a>
+                <a href="#plans" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Planos</a>
+                <a href="#contact" onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-blue-500 transition-colors">Contato</a>
+                <Link
+                    to="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md"
+                >
+                    Área do Cliente
+                </Link>
+           </nav>
+       </div>
+    </header>
+  );
+};
 
 const Footer: React.FC = () => (
     <footer id="contact" className="bg-gray-800 text-white py-12">
