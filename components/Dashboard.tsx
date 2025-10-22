@@ -184,6 +184,8 @@ const HomeView: React.FC<{ user: User | null; tickets: Ticket[]; services: Servi
 const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: User[]; refreshData: () => void; }> = ({ user, tickets, clients, refreshData }) => {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | TicketStatus>('All');
   
   const handleFinish = () => {
     setIsCreating(false);
@@ -191,12 +193,26 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
     refreshData();
   }
 
+  const filteredTickets = tickets
+    .filter(ticket => {
+      if (statusFilter === 'All') return true;
+      return ticket.status === statusFilter;
+    })
+    .filter(ticket => {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      if (!lowerSearchTerm) return true;
+      const clientNameMatch = user?.role === UserRole.Employee 
+        ? ticket.clientName.toLowerCase().includes(lowerSearchTerm) 
+        : false;
+      return ticket.subject.toLowerCase().includes(lowerSearchTerm) || clientNameMatch;
+    });
+
   if (isCreating) {
     return <CreateTicketForm user={user} clients={clients} onFinish={handleFinish} />
   }
 
   if (selectedTicketId) {
-    return <TicketDetailView ticketId={selectedTicketId} onBack={handleFinish} />;
+    return <TicketDetailView ticketId={selectedTicketId} onBack={handleFinish} user={user} />;
   }
 
   return (
@@ -207,6 +223,30 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
           <PlusIcon className="w-5 h-5 mr-2" />
           Abrir Novo Ticket
         </button>
+      </div>
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="relative flex-grow">
+              <input
+                  type="text"
+                  placeholder={user?.role === UserRole.Employee ? "Buscar por assunto ou cliente..." : "Buscar por assunto..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          </div>
+          <div className="flex-shrink-0">
+              <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as 'All' | TicketStatus)}
+                  className="w-full md:w-auto px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                  <option value="All">Todos os Status</option>
+                  {Object.values(TicketStatus).map(status => (
+                      <option key={status} value={status}>{status}</option>
+                  ))}
+              </select>
+          </div>
       </div>
       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
         <table className="min-w-full">
@@ -219,7 +259,7 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {tickets.map(ticket => (
+            {filteredTickets.map(ticket => (
               <tr key={ticket.id} onClick={() => setSelectedTicketId(ticket.id)} className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.subject}</td>
                 {user?.role === UserRole.Employee && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.clientName}</td>}
@@ -231,7 +271,7 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(ticket.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</td>
               </tr>
             ))}
-             {tickets.length === 0 && (
+             {filteredTickets.length === 0 && (
                 <tr>
                     <td colSpan={user?.role === UserRole.Employee ? 4 : 3} className="text-center py-10 text-gray-500">Nenhum ticket encontrado.</td>
                 </tr>
@@ -245,9 +285,7 @@ const TicketsView: React.FC<{ user: User | null; tickets: Ticket[]; clients: Use
 
 
 // --- FORMS and MODALS ---
-// ... (TicketDetailView remains largely the same)
-const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; }> = ({ ticketId, onBack }) => {
-  const { user } = useAuth();
+const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; user: User | null; }> = ({ ticketId, onBack, user }) => {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -290,6 +328,21 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; }> = ({
     }
   };
 
+  const handleStatusChange = async (newStatus: TicketStatus) => {
+    if (!ticket) return;
+    const originalStatus = ticket.status;
+    setTicket(prev => prev ? { ...prev, status: newStatus } : null); // Optimistic update
+    try {
+      await apiService.updateTicketStatus(ticket.id, newStatus);
+      await fetchTicket(); // Refresh to get latest updated_at
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      setTicket(prev => prev ? { ...prev, status: originalStatus } : null); // Revert on error
+      alert("Falha ao atualizar o status do ticket.");
+    }
+  };
+
+
   if (isLoading) return <div className="text-center p-8">Carregando ticket...</div>;
   if (!ticket) return <div className="text-center p-8">Ticket não encontrado.</div>;
 
@@ -298,11 +351,29 @@ const TicketDetailView: React.FC<{ ticketId: number; onBack: () => void; }> = ({
         <button onClick={onBack} className="text-blue-600 mb-4 font-semibold">&larr; Voltar para tickets</button>
         <div className="bg-white rounded-lg shadow-md mb-6">
             <div className="p-6 border-b">
-                <h1 className="text-2xl font-bold text-gray-800">{ticket.subject}</h1>
-                <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
-                    <span>Status: <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[ticket.status]}`}>{ticket.status}</span></span>
+                <div className="flex flex-col md:flex-row justify-between md:items-start gap-4">
+                    <h1 className="text-2xl font-bold text-gray-800 flex-grow">{ticket.subject}</h1>
+                     {user?.role === UserRole.Employee ? (
+                        <div className="flex-shrink-0 w-full md:w-auto">
+                            <select
+                                value={ticket.status}
+                                onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
+                                className={`w-full text-sm font-semibold rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 p-2 ${statusColors[ticket.status].replace('bg-', 'border-').replace('-100', '-300')} ${statusColors[ticket.status].replace('text-', 'bg-').replace('-800', '-100')} ${statusColors[ticket.status]}`}
+                                aria-label="Alterar status do ticket"
+                            >
+                                {Object.values(TicketStatus).map(status => (
+                                    <option key={status} value={status}>{status}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                         <span className={`px-3 py-1 self-start inline-flex text-sm leading-5 font-semibold rounded-full ${statusColors[ticket.status]}`}>{ticket.status}</span>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mt-2">
                     <span>Cliente: <span className="font-medium text-gray-700">{ticket.clientName}</span></span>
                     <span>Criado em: {format(new Date(ticket.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                    <span>Última atualização: {format(new Date(ticket.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                 </div>
             </div>
             <div className="p-6 space-y-4 h-96 overflow-y-auto bg-gray-50">

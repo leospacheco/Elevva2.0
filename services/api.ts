@@ -268,6 +268,14 @@ export const apiService = {
     checkError(updateError);
   },
 
+  async updateTicketStatus(ticketId: number, status: TicketStatus): Promise<void> {
+    const { error } = await supabase
+      .from('tickets')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', ticketId);
+    checkError(error);
+  },
+
   async createService(serviceData: Omit<Service, 'id' | 'clientName'>): Promise<void> {
       const { clientId, startDate, ...rest } = serviceData;
       const { error } = await supabase.from('services').insert({
