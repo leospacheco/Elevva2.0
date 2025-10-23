@@ -5,7 +5,7 @@ type IconProps = {
 };
 
 // Caminho para o arquivo PNG.
-const ELEVVA_LOGO_URL = 'elevva_logo.png'; 
+const ELEVVA_LOGO_URL = '/elevva_logo.png'; 
 
 // LogoIcon agora renderiza a imagem PNG e aceita classes de tamanho
 export const LogoIcon: React.FC<IconProps> = ({ className }) => (
