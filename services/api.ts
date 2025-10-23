@@ -56,17 +56,26 @@ export const apiService = {
     checkError(signUpError);
 
     if (data.user) {
-      // Mude de || '' para ?? null (Mais seguro se a coluna for Nullable no Supabase)
-      const companyValue = userData.company ?? null;
+      // #############################################################
+      // AÇÃO CRÍTICA: Remova o bloco de inserção do perfil.
+      // O Supabase deve estar inserindo o perfil automaticamente via Trigger.
+      // #############################################################
+
+      /* const companyValue = userData.company ?? null; 
 
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         name: userData.name,
         email: userData.email,
-        role: UserRole.Client,
-        company: companyValue, // Usará null se o campo não estiver preenchido.
+        role: UserRole.Client, 
+        company: companyValue, 
       });
       checkError(profileError);
+      */
+      // #############################################################
+
+      // O processo de registro agora termina aqui, se o Trigger no DB estiver ativo.
+
     } else {
       throw new Error("Registration succeeded but no user data was returned.");
     }
