@@ -12,9 +12,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // Mantenha estas, se necessário:
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-
       // ADICIONE ESTAS: Garante que as chaves do Supabase da Vercel sejam injetadas no 'process.env
     },
     resolve: {
