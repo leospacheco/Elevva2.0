@@ -56,19 +56,27 @@ export const apiService = {
     checkError(signUpError);
 
     if (data.user) {
-      const profileToInsert: { id: string; name: string; email: string; role: UserRole; company?: string; } = {
+      // INÍCIO DA CORREÇÃO: Construir o objeto de inserção dinamicamente para evitar NOT NULL error no Supabase.
+      const profileToInsert: { [key: string]: any } = {
         id: data.user.id,
         name: userData.name,
         email: userData.email,
         role: UserRole.Client, // All new registrations are clients
+        // O campo 'company' só é inserido se tiver um valor,
+        // mas como ele não está no formulário de registro (AuthPage.tsx),
+        // ele é 'undefined'. A linha abaixo força a inclusão se houver.
+        // Já que ele não é fornecido pelo AuthPage, o melhor é omiti-lo se não existir
       };
 
-      // Adicionar a empresa apenas se estiver definida
       if (userData.company) {
-        profileToInsert.company = userData.company;
+          profileToInsert.company = userData.company;
       }
+      // FIM DA CORREÇÃO
 
-      const { error: profileError } = await supabase.from('profiles').insert(profileToInsert);
+      const { error: profileError } = await supabase.from('profiles').insert(
+          // Passando o objeto corrigido:
+          profileToInsert
+      );
       checkError(profileError);
     } else {
       throw new Error("Registration succeeded but no user data was returned.");
