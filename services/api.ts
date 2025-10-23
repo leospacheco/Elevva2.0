@@ -62,6 +62,7 @@ export const apiService = {
         name: userData.name,
         email: userData.email,
         role: UserRole.Client, // All new registrations are clients
+        company: userData.company ?? null,
         // O campo 'company' só é inserido se tiver um valor,
         // mas como ele não está no formulário de registro (AuthPage.tsx),
         // ele é 'undefined'. A linha abaixo força a inclusão se houver.
