@@ -42,7 +42,7 @@ const getCurrentUserProfile = async (): Promise<User> => {
 
 export const apiService = {
   // --- AUTH ---
-  
+
   async login(credentials: Credentials): Promise<void> {
     const { error } = await supabase.auth.signInWithPassword(credentials);
     checkError(error);
@@ -56,13 +56,19 @@ export const apiService = {
     checkError(signUpError);
 
     if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
+      const profileToInsert: { id: string; name: string; email: string; role: UserRole; company?: string; } = {
         id: data.user.id,
         name: userData.name,
         email: userData.email,
         role: UserRole.Client, // All new registrations are clients
-        company: userData.company,
-      });
+      };
+
+      // Adicionar a empresa apenas se estiver definida
+      if (userData.company) {
+        profileToInsert.company = userData.company;
+      }
+
+      const { error: profileError } = await supabase.from('profiles').insert(profileToInsert);
       checkError(profileError);
     } else {
       throw new Error("Registration succeeded but no user data was returned.");
@@ -107,7 +113,7 @@ export const apiService = {
       .select('last_checked_tickets_at')
       .eq('id', user.id)
       .single();
-    
+
     checkError(profileError);
 
     const lastChecked = profileData?.last_checked_tickets_at;
@@ -116,7 +122,7 @@ export const apiService = {
     if (!lastChecked) {
       return 0;
     }
-    
+
     // We consider a ticket "updated" if its `updated_at` is more recent than the last check.
     // This covers both new tickets and new messages in existing tickets.
     let query = supabase
@@ -128,7 +134,7 @@ export const apiService = {
     if (user.role === UserRole.Client) {
       query = query.eq('client_id', user.id);
     }
-    
+
     const { count, error } = await query;
     checkError(error);
     return count || 0;
