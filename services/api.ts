@@ -56,15 +56,14 @@ export const apiService = {
     checkError(signUpError);
 
     if (data.user) {
-      // CORREÇÃO FINAL: Usa nullish coalescing para garantir que, se for undefined,
-      // ele envie null. Isto funciona se a coluna for nullable.
-      const companyValue = userData.company ?? null; 
+      // Mude de || '' para ?? null (Mais seguro se a coluna for Nullable no Supabase)
+      const companyValue = userData.company ?? null;
 
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         name: userData.name,
         email: userData.email,
-        role: UserRole.Client, 
+        role: UserRole.Client,
         company: companyValue, // Usará null se o campo não estiver preenchido.
       });
       checkError(profileError);
@@ -72,7 +71,7 @@ export const apiService = {
       throw new Error("Registration succeeded but no user data was returned.");
     }
   },
-  
+
   async logout(): Promise<void> {
     const { error } = await supabase.auth.signOut();
     checkError(error);
