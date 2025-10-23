@@ -56,16 +56,16 @@ export const apiService = {
     checkError(signUpError);
 
     if (data.user) {
-      // CORREÇÃO: Garante que o valor de 'company' seja uma string, 
-      // usando uma string vazia como fallback se for undefined.
-      const companyValue = userData.company || ''; 
+      // CORREÇÃO FINAL: Usa nullish coalescing para garantir que, se for undefined,
+      // ele envie null. Isto funciona se a coluna for nullable.
+      const companyValue = userData.company ?? null; 
 
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         name: userData.name,
         email: userData.email,
         role: UserRole.Client, 
-        company: companyValue, // Usará '' se o campo não estiver preenchido.
+        company: companyValue, // Usará null se o campo não estiver preenchido.
       });
       checkError(profileError);
     } else {
