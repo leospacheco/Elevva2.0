@@ -1,11 +1,11 @@
 import React from 'react';
-
+import elevvaLogoUrl from '../elevva_logo.png';
 type IconProps = {
   className?: string;
 };
 
 // Caminho para o arquivo PNG.
-const ELEVVA_LOGO_URL = '/elevva_logo.png'; 
+const ELEVVA_LOGO_URL = elevvaLogoUrl; 
 
 // LogoIcon agora renderiza a imagem PNG e aceita classes de tamanho
 export const LogoIcon: React.FC<IconProps> = ({ className }) => (
