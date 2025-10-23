@@ -15,9 +15,7 @@ export default defineConfig(({ mode }) => {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
 
-      // ADICIONE ESTAS: Garante que as chaves do Supabase da Vercel sejam injetadas no 'process.env'
-      'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL),
-      'process.env.SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY)
+      // ADICIONE ESTAS: Garante que as chaves do Supabase da Vercel sejam injetadas no 'process.env
     },
     resolve: {
       alias: {
